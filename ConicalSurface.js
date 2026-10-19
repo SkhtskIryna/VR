@@ -16,8 +16,8 @@ function ConicalSurface() {
     const vMin = -0.8;
     const vMax = 0.8;
     
-    const uSteps = 32; // Кількість секторів по колу (як на референсі)
-    const vSteps = 6; // Кількість паралелей по висоті
+    const uSteps = typeof window !== "undefined" && window.uGranularity ? window.uGranularity : 32;
+    const vSteps = typeof window !== "undefined" && window.vGranularity ? window.vGranularity : 6;
 
     // Масштаб для візуалізації
     const scale = 0.65;
@@ -56,10 +56,7 @@ function ConicalSurface() {
     }
     
     // БЛОК МАТЕМАТИЧНИХ ПЕРЕВІРОК
-    console.group(
-        "%c=== ПЕРЕВІРКА ===",
-        "color: #00ff66; font-weight: bold;",
-    );
+    console.group("%c=== ПЕРЕВІРКА ===", "color: #00ff66; font-weight: bold;");
     
     // Перевірка 1: Належність паралелей концентричним сферам
     // Для будь-якого фіксованого v відстань sqrt(x^2 + y^2 + z^2) має бути однаковою при всіх u.
@@ -165,6 +162,12 @@ function ConicalSurface() {
     }
     
     console.groupEnd();
+    
+    // Збереження сітки для побудови трикутників та нормалей
+    ConicalSurface.grid = grid;
+    ConicalSurface.uSteps = uSteps;
+    ConicalSurface.vSteps = vSteps;
+    
     return lines;
 }
 

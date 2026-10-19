@@ -3,36 +3,51 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 
-    <title>PA#1</title>
-    <style>
-      body {
-        background-color: #eeeeee;
-      }
-    </style>
+    <title>PA#2</title>
+    <link rel="stylesheet" href="./style/main.css">
 
     <script src="./Utils/trackball-rotator.js"></script>
     <script src="./Utils/m4.js"></script>
     <script src="./shader.gpu"></script>
-    <script src="./main.js"></script>
     <script src="./ConicalSurface.js"></script>
+    <script src="./Sphere.js"></script>
+    <script src="./Model.js"></script>
+    <script src="./main.js"></script>
   </head>
   <body onload="init()">
-    <h2>
-      Conical Surface with a Directrix Curve on a Sphere (Ruled Conic Limaçon)
-    </h2>
+    <div class="header-card">
+      <h2>Conical Surface with a Directrix Curve on a Sphere</h2>
+      <p>Drag mouse to rotate view. Touch screen supported.</p>
+    </div>
 
-    <p id="message">
-      Drag your mouse on the cube to rotate it.<br />
-      (On a touch screen, you can use your finger.)
-    </p>
+    <div class="controls">
+      <h3>Parameters</h3>
+
+      <div class="control-group">
+        <label for="uStepsSlider">Number of U Steps: <span id="uVal">32</span></label>
+        <input id="uStepsSlider" type="range" min="8" max="100" value="32" step="1"/>
+      </div>
+
+      <div class="control-group">
+        <label for="vStepsSlider">Number of V Steps: <span id="vVal">6</span></label>
+        <input id="vStepsSlider" type="range" min="2" max="30" value="6" step="1"/>
+      </div>
+
+      <div class="control-group">
+        <label for="scaleSlider">Surface Scale: <span id="scaleVal">1.0</span></label>
+        <input id="scaleSlider" type="range" min="0.2" max="2.0" value="1.0" step="0.05"/>
+      </div>
+
+      <div class="control-group">
+        <label for="lightDistSlider">Light Distance: <span id="distVal">4.0</span></label>
+        <input id="lightDistSlider" type="range" min="1.0" max="10.0" value="4.0" step="0.1"/>
+      </div>
+
+      <button id="toggleAnimBtn">Pause Light</button>
+    </div>
 
     <div id="canvas-holder">
-      <canvas
-        width="1880"
-        height="780"
-        id="webglcanvas"
-        style="background-color: red"
-      ></canvas>
+      <canvas id="webglcanvas"></canvas>
     </div>
   </body>
 </html>

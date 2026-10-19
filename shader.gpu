@@ -1,16 +1,48 @@
-
-
-// Vertex shader
 const vertexShaderSource = `
 attribute vec3 vertex;
-uniform mat4 ModelViewProjectionMatrix;
+attribute vec3 normal;
+
+uniform mat4 ModelViewMatrix;
+uniform mat4 ProjectionMatrix;
+uniform mat3 NormalMatrix;
+
+uniform vec3 lightPosition; // координати джерела світла у видовій системі
+uniform vec4 color;
+
+varying vec4 vColor;
 
 void main() {
-    gl_Position = ModelViewProjectionMatrix * vec4(vertex,1.0);
-}`;
+    // 1. Положення вершини в системі координат камери
+    vec4 eyeVertex = ModelViewMatrix * vec4(vertex, 1.0);
+    gl_Position = ProjectionMatrix * eyeVertex;
 
+    // 2. Вектори освітлення
+    vec3 N = normalize(NormalMatrix * normal);
+    vec3 L = normalize(lightPosition - eyeVertex.xyz);
+    vec3 V = normalize(-eyeVertex.xyz); // Камера розташована в (0, 0, 0)
 
-// Fragment shader
+    if (dot(N, L) < 0.0) {
+        N = -N;
+    }
+
+    vec3 R = reflect(-L, N);
+
+    // 3. Складові освітлення Gouraud
+    vec3 ambient = 0.2 * color.rgb;
+
+    float diffFactor = max(dot(N, L), 0.0);
+    vec3 diffuse = diffFactor * color.rgb;
+
+    float specFactor = 0.0;
+    if (diffFactor > 0.0) {
+        specFactor = pow(max(dot(R, V), 0.0), 32.0);
+    }
+    vec3 specular = specFactor * vec3(1.0, 1.0, 1.0);
+
+    vColor = vec4(ambient + diffuse + specular, color.a);
+}
+`;
+
 const fragmentShaderSource = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
    precision highp float;
@@ -18,7 +50,33 @@ const fragmentShaderSource = `
    precision mediump float;
 #endif
 
+varying vec4 vColor;
+
+void main() {
+    gl_FragColor = vColor;
+}
+`;
+
+// Шейдери для візуалізації джерела світла
+const lightVertexShaderSource = `
+attribute vec3 vertex;
+uniform mat4 ModelViewProjectionMatrix;
+
+void main() {
+    gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
+}
+`;
+
+const lightFragmentShaderSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
 uniform vec4 color;
+
 void main() {
     gl_FragColor = color;
-}`;
+}
+`;

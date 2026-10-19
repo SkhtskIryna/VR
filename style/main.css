@@ -1,0 +1,158 @@
+body {
+    background-color: #eeeeee;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body,
+html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #0d1117;
+    font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Плаваючий блок заголовка зліва вгорі */
+.header-card {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    max-width: 500px;
+    background: rgba(22, 27, 34, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 18px 22px;
+    color: #e6edf3;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.header-card h2 {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    color: #58a6ff;
+}
+
+.header-card p {
+    font-size: 13px;
+    color: #8b949e;
+    line-height: 1.4;
+}
+
+/* Повноекранний контейнер WebGL */
+#canvas-holder {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#webglcanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Панель керування з правого боку */
+.controls {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    width: 280px;
+    background: rgba(22, 27, 34, 0.82);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 20;
+    color: #e6edf3;
+    user-select: none;
+}
+
+.controls h3 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #58a6ff;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.control-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #8b949e;
+}
+
+.control-group label span {
+    font-weight: 600;
+    color: #f0f6fc;
+    font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #30363d;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #58a6ff;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(88, 166, 255, 0.5);
+}
+
+#toggleAnimBtn {
+    margin-top: 4px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    background: #238636;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+    background 0.2s,
+    transform 0.1s;
+}
+
+#toggleAnimBtn:hover {
+    background: #2ea043;
+}
+
+#toggleAnimBtn:active {
+    transform: scale(0.98);
+}

@@ -116,8 +116,9 @@ function TrackballRotator(canvas, callback, viewDistance, viewpointDirection, vi
         if (dragging)
            return;
         dragging = true;
-        centerX = canvas.width/2;
-        centerY = canvas.height/2;
+        var box = canvas.getBoundingClientRect();
+        centerX = box.width / 2;
+        centerY = box.height / 2;
         var radius = Math.min(centerX,centerY);
         radius2 = radius*radius;
         document.addEventListener("mousemove", doMouseDrag, false);

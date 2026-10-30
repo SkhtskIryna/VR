@@ -7,6 +7,11 @@ let spaceball;                  // A SimpleRotator object that lets the user rot
 let lightProgram;               // Шейдерна програма для сфери світла
 let lightSphere;                // Модель сфери для відображення джерела світла
 
+// Текстури
+let diffuseTexture;
+let specularTexture;
+let normalTexture;
+
 // Глобальні параметри дискретизації для слайдерів
 window.uGranularity = 32;
 window.vGranularity = 6;
@@ -34,10 +39,8 @@ function ShaderProgram(name, program) {
     // Location of the attribute variable in the shader program.
     this.iAttribVertex = -1;
     this.iAttribNormal = -1;
-    
-    // Location of the uniform specifying a color for the primitive.
-    this.iColor = -1;
-    // Location of the uniform matrix representing the combined transformation.
+    this.iAttribTexCoord = -1;
+    this.iAttribTangent = -1;
 
     // Uniform matrices
     this.iModelViewMatrix = -1;
@@ -47,6 +50,12 @@ function ShaderProgram(name, program) {
     
     // Location of the light source position
     this.iLightPosition = -1;
+
+    this.uDiffuseMap = -1;
+    this.uSpecularMap = -1;
+    this.uNormalMap = -1;
+    this.iColor = -1;
+
     this.Use = function() {
         gl.useProgram(this.prog);
     }
@@ -62,6 +71,47 @@ function resizeCanvas() {
         gl.canvas.height = displayHeight;
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
+}
+
+function isPowerOf2(value) {
+    return (value & (value - 1)) === 0;
+}
+
+// Завантаження текстури з підтримкою локального сервера
+function loadTexture(gl, url, defaultColor = [180, 180, 180, 255]) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    const pixel = new Uint8Array(defaultColor);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    
+    image.onload = function () {
+        console.log("Успішно завантажено текстуру:", url);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+        if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        } else {
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        }
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        draw();
+    };
+
+    image.onerror = function () {
+        console.error("ПОМИЛКА: Не вдалося завантажити файл за адресою:", url);
+    };
+
+    image.src = url;
+    return texture;
 }
 
 /* Draws a colored cube, along with a set of coordinate axes.
@@ -117,7 +167,19 @@ function draw(){
     gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, surfaceModelView);
     gl.uniformMatrix3fv(shProgram.iNormalMatrix, false, normalMatrix);
     gl.uniform3fv(shProgram.iLightPosition, lightEyePos);
-    gl.uniform4fv(shProgram.iColor, [0.2, 0.6, 0.9, 1.0]);
+    
+    // Біндинг трьох текстур
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, diffuseTexture);
+    gl.uniform1i(shProgram.uDiffuseMap, 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, specularTexture);
+    gl.uniform1i(shProgram.uSpecularMap, 1);
+
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, normalTexture);
+    gl.uniform1i(shProgram.uNormalMap, 2);
     
     surface.Draw(shProgram);
     
@@ -150,7 +212,7 @@ function animate() {
 function updateSurface() {
     let data = {};
     CreateSurfaceData(data);
-    surface.BufferData(data.verticesF32, data.normalsF32, data.indicesU16);
+    surface.BufferData(data.verticesF32, data.normalsF32, data.texCoordsF32, data.tangentsF32, data.indicesU16);
 }
 
 /* Initialize the WebGL context. Called from init() */
@@ -162,10 +224,17 @@ function initGL() {
     
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
     shProgram.iAttribNormal = gl.getAttribLocation(prog, "normal");
+    shProgram.iAttribTexCoord = gl.getAttribLocation(prog, "texCoord");
+    shProgram.iAttribTangent = gl.getAttribLocation(prog, "tangent");
+
     shProgram.iModelViewMatrix = gl.getUniformLocation(prog, "ModelViewMatrix");
     shProgram.iProjectionMatrix = gl.getUniformLocation(prog, "ProjectionMatrix");
     shProgram.iNormalMatrix = gl.getUniformLocation(prog, "NormalMatrix");
     shProgram.iLightPosition = gl.getUniformLocation(prog, "lightPosition");
+
+    shProgram.uDiffuseMap = gl.getUniformLocation(prog, "diffuseMap");
+    shProgram.uSpecularMap = gl.getUniformLocation(prog, "specularMap");
+    shProgram.uNormalMap = gl.getUniformLocation(prog, "normalMap");
     shProgram.iColor = gl.getUniformLocation(prog, "color");
     
     // Ініціалізація програми для сфери світла
@@ -183,8 +252,13 @@ function initGL() {
     let sphereData = {};
     CreateSphereData(sphereData, 0.15, 16, 16);
     lightSphere = new Model("LightSphere");
-    lightSphere.BufferData(sphereData.verticesF32, null, sphereData.indicesU16);
+    lightSphere.BufferData(sphereData.verticesF32, null, null, null, sphereData.indicesU16);
     
+    // Завантаження 3 текстур
+    diffuseTexture = loadTexture(gl, "textures/diffuse.jpg", [160, 160, 160, 255]);
+    specularTexture = loadTexture(gl, "textures/specular.jpg", [255, 255, 255, 255]);
+    normalTexture = loadTexture(gl, "textures/normal.jpg", [128, 128, 255, 255]);
+
     gl.enable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
 }

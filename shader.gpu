@@ -1,45 +1,35 @@
 const vertexShaderSource = `
 attribute vec3 vertex;
 attribute vec3 normal;
+attribute vec2 texCoord;
+attribute vec3 tangent;
 
 uniform mat4 ModelViewMatrix;
 uniform mat4 ProjectionMatrix;
 uniform mat3 NormalMatrix;
 
 uniform vec3 lightPosition; // координати джерела світла у видовій системі
-uniform vec4 color;
 
-varying vec4 vColor;
+varying vec2 vTexCoord;
+varying vec3 vLightDir;
+varying vec3 vViewDir;
+varying vec3 vNormal;
+varying vec3 vTangent;
 
 void main() {
     // 1. Положення вершини в системі координат камери
     vec4 eyeVertex = ModelViewMatrix * vec4(vertex, 1.0);
     gl_Position = ProjectionMatrix * eyeVertex;
 
+    vTexCoord = texCoord;
+
     // 2. Вектори освітлення
-    vec3 N = normalize(NormalMatrix * normal);
-    vec3 L = normalize(lightPosition - eyeVertex.xyz);
-    vec3 V = normalize(-eyeVertex.xyz); // Камера розташована в (0, 0, 0)
+    vLightDir = lightPosition - eyeVertex.xyz;
+    vViewDir = -eyeVertex.xyz;
 
-    if (dot(N, L) < 0.0) {
-        N = -N;
-    }
-
-    vec3 R = reflect(-L, N);
-
-    // 3. Складові освітлення Gouraud
-    vec3 ambient = 0.2 * color.rgb;
-
-    float diffFactor = max(dot(N, L), 0.0);
-    vec3 diffuse = diffFactor * color.rgb;
-
-    float specFactor = 0.0;
-    if (diffFactor > 0.0) {
-        specFactor = pow(max(dot(R, V), 0.0), 32.0);
-    }
-    vec3 specular = specFactor * vec3(1.0, 1.0, 1.0);
-
-    vColor = vec4(ambient + diffuse + specular, color.a);
+    // 3. Переведення нормалі та тангенса у видовий простір
+    vNormal = normalize(NormalMatrix * normal);
+    vTangent = normalize(NormalMatrix * tangent);
 }
 `;
 
@@ -50,10 +40,66 @@ const fragmentShaderSource = `
    precision mediump float;
 #endif
 
-varying vec4 vColor;
+varying vec2 vTexCoord;
+varying vec3 vLightDir;
+varying vec3 vViewDir;
+varying vec3 vNormal;
+varying vec3 vTangent;
+
+uniform sampler2D diffuseMap;
+uniform sampler2D specularMap;
+uniform sampler2D normalMap;
 
 void main() {
-    gl_FragColor = vColor;
+    // 1. Ортогоналізація Грама-Шмідта з пріорітетом нормалі (Prioritize Normal)
+    vec3 N = normalize(vNormal);
+    vec3 T = normalize(vTangent);
+    
+    // Проектування тангенса на площину, перпендикулярну нормалі: T' = normalize(T - (T · N) * N)
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+
+    // 2. Отримання нормалі з карти нормалей і переведення з [0, 1] в [-1, 1]
+    vec3 mapNormal = texture2D(normalMap, vTexCoord).rgb;
+    mapNormal = normalize(mapNormal * 2.0 - 1.0);
+
+    // Підсилення виразності рельєфу в 3 рази
+    mapNormal.xy *= 3.0;
+    mapNormal = normalize(mapNormal);
+
+    // Нормаль у видовому просторі
+    vec3 effNormal = normalize(TBN * mapNormal);
+
+    vec3 L = normalize(vLightDir);
+    vec3 V = normalize(vViewDir);
+
+    if (dot(effNormal, L) < 0.0) {
+        effNormal = -effNormal;
+    }
+
+    vec3 R = reflect(-L, effNormal);
+
+    // 3. Зчитування значень текстур
+    vec4 diffColor = texture2D(diffuseMap, vTexCoord);
+    vec4 specColor = texture2D(specularMap, vTexCoord);
+
+    // Інвертування Roughness у Glossiness
+    vec3 glossiness = (vec3(1.0) - specColor.rgb) * 1.2;
+
+    // 4. Обчислення компонент освітлення
+    vec3 ambient = 0.25 * diffColor.rgb;
+
+    float diffFactor = max(dot(effNormal, L), 0.0);
+    vec3 diffuse = diffFactor * diffColor.rgb;
+
+    float specFactor = 0.0;
+    if (diffFactor > 0.0) {
+        specFactor = pow(max(dot(R, V), 0.0), 32.0);
+    }
+    vec3 specular = specFactor * glossiness;
+
+    gl_FragColor = vec4(ambient + diffuse + specular, diffColor.a);
 }
 `;
 

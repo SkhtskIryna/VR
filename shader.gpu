@@ -7,6 +7,7 @@ attribute vec3 tangent;
 uniform mat4 ModelViewMatrix;
 uniform mat4 ProjectionMatrix;
 uniform mat3 NormalMatrix;
+uniform mat3 texMatrix;
 
 uniform vec3 lightPosition; // координати джерела світла у видовій системі
 
@@ -21,7 +22,9 @@ void main() {
     vec4 eyeVertex = ModelViewMatrix * vec4(vertex, 1.0);
     gl_Position = ProjectionMatrix * eyeVertex;
 
-    vTexCoord = texCoord;
+    // Застосування афінного перетворення до 2D координат (u, v, 1)
+    vec3 transformedUV = texMatrix * vec3(texCoord, 1.0);
+    vTexCoord = transformedUV.xy;
 
     // 2. Вектори освітлення
     vLightDir = lightPosition - eyeVertex.xyz;

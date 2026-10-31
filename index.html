@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 
-    <title>Control Task</title>
+    <title>CGW</title>
     <link rel="stylesheet" href="./style/main.css">
 
     <script src="./Utils/trackball-rotator.js"></script>
@@ -44,6 +44,22 @@
       </div>
 
       <button id="toggleAnimBtn">Pause Light</button>
+
+      <hr style="border: 0; border-top: 1px solid #444; margin: 10px 0;">
+      <h3>Texture Coordinates</h3>
+
+      <div class="control-group">
+        <label for="rotSlider">Texture Rotation Angle: <span id="rotVal">0°</span></label>
+        <input id="rotSlider" type="range" min="0" max="360" value="0" step="1"/>
+      </div>
+
+      <div class="control-group" style="font-size: 0.9em; line-height: 1.5;">
+        <div><b>Center Point (u, v):</b></div>
+        <div>Surface u: <span id="pointUVal">0.00</span> (A / D)</div>
+        <div>Surface v: <span id="pointVVal">0.00</span> (W / S)</div>
+        <div style="margin-top: 4px; color: #88c0d0;">Use <b>W, A, S, D</b> to move point</div>
+      </div>
+
     </div>
 
     <div id="canvas-holder">

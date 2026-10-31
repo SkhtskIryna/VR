@@ -167,6 +167,8 @@ function ConicalSurface() {
     ConicalSurface.grid = grid;
     ConicalSurface.uSteps = uSteps;
     ConicalSurface.vSteps = vSteps;
+
+    ConicalSurface.calculatePoint = calculatePoint;
     
     return lines;
 }

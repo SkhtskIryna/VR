@@ -25,6 +25,14 @@ let lightAngle = 0.0;
 let lightDistance = 4.0; 
 const lightY = 0.0;
 
+let texRotationAngle = 0.0; // в радіанах
+let pointU = 2.0 * Math.PI; // діапазон поверхні [0, 4*PI]
+let pointV = 0.0;           // діапазон поверхні [-0.8, 0.8]
+
+// Межі зміни параметрів поверхні
+const U_MIN = 0.0, U_MAX = 4.0 * Math.PI;
+const V_MIN = -0.8, V_MAX = 0.8;
+
 function deg2rad(angle) {
     return (angle * Math.PI) / 180;
 }
@@ -114,6 +122,24 @@ function loadTexture(gl, url, defaultColor = [180, 180, 180, 255]) {
     return texture;
 }
 
+function getTextureRotationMatrix(u0, v0, angleRad) {
+    const c = Math.cos(angleRad);
+    const s = Math.sin(angleRad);
+
+    // M = T(u0, v0) * R(angle) * T(-u0, -v0)
+    // u' = c*(u - u0) - s*(v - v0) + u0 = c*u - s*v + (u0*(1-c) + v0*s)
+    // v' = s*(u - u0) + c*(v - v0) + v0 = s*u + c*v + (v0*(1-c) - u0*s)
+    const tx = u0 * (1.0 - c) + v0 * s;
+    const ty = v0 * (1.0 - c) - u0 * s;
+
+    // WebGL очікує матриці у форматі Column-Major (за стовпцями)
+    return new Float32Array([
+        c,  s,  0,
+        -s,  c,  0,
+        tx, ty,  1
+    ]);
+}
+
 /* Draws a colored cube, along with a set of coordinate axes.
  * (Note that the use of the above drawPrimitive function is not an efficient
  * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
@@ -163,9 +189,19 @@ function draw(){
         surfaceModelView[10],
     ];
     
+    // Переведення координат (pointU, pointV) у текстурний простір (texU, texV)
+    let uNormalized = (pointU - U_MIN) / (U_MAX - U_MIN); // [0, 1]
+    let vNormalized = (pointV - V_MIN) / (V_MAX - V_MIN); // [0, 1]
+
+    let texCoordU0 = uNormalized * 4.0; // бо в Model.js uTex = (i / uSteps) * 4.0
+    let texCoordV0 = vNormalized * 1.0;
+
+    let texMat = getTextureRotationMatrix(texCoordU0, texCoordV0, texRotationAngle);
+
     gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projection);
     gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, surfaceModelView);
     gl.uniformMatrix3fv(shProgram.iNormalMatrix, false, normalMatrix);
+    gl.uniformMatrix3fv(shProgram.uTexMatrix, false, texMat);
     gl.uniform3fv(shProgram.iLightPosition, lightEyePos);
     
     // Біндинг трьох текстур
@@ -183,6 +219,23 @@ function draw(){
     
     surface.Draw(shProgram);
     
+    // Відображення маркера точки на поверхні
+    if (ConicalSurface.calculatePoint) {
+        lightProgram.Use();
+        let pt = ConicalSurface.calculatePoint(pointU, pointV);
+
+        let markerMat = m4.translation(pt[0], pt[1], pt[2]);
+        markerMat = m4.scale(markerMat, 0.3, 0.3, 0.3); // розмір сфери
+        
+        let markerMVP = m4.multiply(projection, m4.multiply(surfaceModelView, markerMat));
+
+        gl.uniformMatrix4fv(lightProgram.iModelViewProjectionMatrix, false, markerMVP);
+        gl.uniform4fv(lightProgram.iColor, [1.0, 0.05, 0.05, 1.0]); // насичений червоний колір
+
+        gl.disable(gl.DEPTH_TEST);
+        lightSphere.Draw(lightProgram);
+        gl.enable(gl.DEPTH_TEST);
+    }
     
     // Відображення сфери-світила
     lightProgram.Use();
@@ -231,6 +284,7 @@ function initGL() {
     shProgram.iProjectionMatrix = gl.getUniformLocation(prog, "ProjectionMatrix");
     shProgram.iNormalMatrix = gl.getUniformLocation(prog, "NormalMatrix");
     shProgram.iLightPosition = gl.getUniformLocation(prog, "lightPosition");
+    shProgram.uTexMatrix = gl.getUniformLocation(prog, "texMatrix");
 
     shProgram.uDiffuseMap = gl.getUniformLocation(prog, "diffuseMap");
     shProgram.uSpecularMap = gl.getUniformLocation(prog, "specularMap");
@@ -324,6 +378,7 @@ function init() {
     let scaleSlider = document.getElementById("scaleSlider");
     let distSlider = document.getElementById("lightDistSlider");
     let toggleBtn = document.getElementById("toggleAnimBtn");
+    let rotSlider = document.getElementById("rotSlider");
     
     if (uSlider) {
         uSlider.addEventListener("input", function (e) {
@@ -360,9 +415,44 @@ function init() {
             draw();
         });
     }
+
+    if (rotSlider) {
+        rotSlider.addEventListener("input", function(e) {
+            let deg = parseFloat(e.target.value);
+            texRotationAngle = deg2rad(deg);
+            document.getElementById("rotVal").textContent = deg + "°";
+            draw();
+        });
+    }
     
     window.addEventListener("resize", function () {
         resizeCanvas();
+        draw();
+    });
+
+    window.addEventListener("keydown", function(e) {
+        const uStep = (U_MAX - U_MIN) / 50.0;
+        const vStep = (V_MAX - V_MIN) / 50.0;
+
+        switch (e.code) {
+            case "KeyA": // рух ліворуч по u
+                pointU = Math.max(U_MIN, pointU - uStep);
+                break;
+            case "KeyD": // рух праворуч по u
+                pointU = Math.min(U_MAX, pointU + uStep);
+                break;
+            case "KeyW": // рух вгору по v
+                pointV = Math.min(V_MAX, pointV + vStep);
+                break;
+            case "KeyS": // рух вниз по v
+                pointV = Math.max(V_MIN, pointV - vStep);
+                break;
+            default:
+                return;
+        }
+
+        document.getElementById("pointUVal").textContent = pointU.toFixed(2);
+        document.getElementById("pointVVal").textContent = pointV.toFixed(2);
         draw();
     });
     
